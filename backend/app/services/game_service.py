@@ -28,3 +28,18 @@ class GameService:
                 for p in self.table.players
             ]
         }
+
+    def get_state(self):
+        return {
+            "players": [
+                {
+                    "name": p.name,
+                    "chips": p.chips,
+                    "folded": p.has_folded
+                }
+                for p in self.table.players
+            ],
+            "pot": self.table.pot,
+            "state": self.table.state,
+            "community_cards": [str(c) for c in self.table.community_cards]
+        }
