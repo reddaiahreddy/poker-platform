@@ -1,30 +1,30 @@
-from app.poker.table import Table
-from app.poker.player import Player
+from app.poker.hand_evaluator import HandEvaluator
 
 
-class GameService:
-    def __init__(self):
-        self.table = Table()
+class GameManager:
 
-    def add_player(self, player_id: str, name: str):
-        player = Player(id=player_id, name=name)
-        self.table.add_player(player)
+    @staticmethod
+    def determine_winner(players, community_cards):
 
-        return {
-            "event": "player_joined",
-            "player": name
-        }
+        ranked_players = []
 
-    def start_game(self):
-        self.table.start_round()
+        for player in players:
 
-        return {
-            "event": "game_started",
-            "players": [
-                {
-                    "name": p.name,
-                    "hand": [str(c) for c in p.hand]
-                }
-                for p in self.table.players
-            ]
-        }
+            if player.has_folded:
+                continue
+
+            all_cards = player.hand + community_cards
+
+            result = HandEvaluator.evaluate(all_cards)
+
+            ranked_players.append({
+                "player": player,
+                "result": result
+            })
+
+        ranked_players.sort(
+            key=lambda x: x["result"]["rank"],
+            reverse=True
+        )
+
+        return ranked_players[0]
