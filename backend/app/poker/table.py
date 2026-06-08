@@ -1,7 +1,7 @@
 from typing import List, Optional
 from app.poker.player import Player
 from app.poker.deck import Deck
-
+from app.poker.game_manager import GameManager
 
 class Table:
     def __init__(self):
@@ -160,6 +160,30 @@ class Table:
 
         elif self.state == "RIVER":
             self.state = "SHOWDOWN"
+
+    # ----------------------------
+    # DETERMINE WINNER
+    # ----------------------------
+    def determine_winner(self):
+
+        winner = GameManager.determine_winner(
+            self.players,
+            self.community_cards
+        )
+
+        winning_player = winner["player"]
+
+        winning_player.chips += self.pot
+
+        result = {
+            "winner": winning_player.name,
+            "hand": winner["result"]["name"],
+            "pot": self.pot
+        }
+
+        self.pot = 0
+
+        return result    
 
     # -----------------------------
     # DEBUG / STATE EXPORT
