@@ -44,26 +44,77 @@ async def table_socket(websocket: WebSocket):
             # BET
             # -----------------------------
             elif action == "bet":
+
                 response = game.table.bet(
                     player_id=user,
                     amount=message.get("amount", 0)
-                )
-                game.table.advance_if_ready()
+            )
+
+            previous_state = game.table.state
+
+            game.table.advance_if_ready()
+
+            if game.table.state != previous_state:
+
+                await manager.broadcast(
+                    game.get_state()
+            )
+
+            if game.table.state == "SHOWDOWN":
+
+                await manager.broadcast(
+                    game.showdown()
+            )
 
             # -----------------------------
             # CALL
             # -----------------------------
             elif action == "call":
-                response = game.table.call(player_id=user)
-                game.table.advance_if_ready()
+
+                response = game.table.call(
+                    player_id=user
+            )
+
+            previous_state = game.table.state
+
+            game.table.advance_if_ready()
+
+            if game.table.state != previous_state:
+
+                await manager.broadcast(
+                    game.get_state()
+            )
+
+            if game.table.state == "SHOWDOWN":
+
+                await manager.broadcast(
+                    game.showdown()
+            )
 
             # -----------------------------
             # FOLD
             # -----------------------------
             elif action == "fold":
-                response = game.table.fold(player_id=user)
-                game.table.advance_if_ready()
 
+                response = game.table.fold(
+                player_id=user
+            )
+
+            previous_state = game.table.state
+
+            game.table.advance_if_ready()
+
+            if game.table.state != previous_state:
+
+                await manager.broadcast(
+                    game.get_state()
+            )
+
+            if game.table.state == "SHOWDOWN":
+
+                await manager.broadcast(
+                    game.showdown()
+            )
             # -----------------------------
             # GET STATE (DEBUG / UI SYNC)
             # -----------------------------
