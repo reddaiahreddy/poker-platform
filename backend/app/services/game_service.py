@@ -49,25 +49,11 @@ class GameService:
         }
 
     def get_state(self):
+        state = self.table.get_state()
 
-        return {
-            "event": "table_state",
-            "state": self.table.state,
-            "pot": self.table.pot,
-            "community_cards": [
-                str(card)
-                for card in self.table.community_cards
-            ],
-            "players": [
-                {
-                    "name": p.name,
-                    "chips": p.chips,
-                    "folded": p.has_folded,
-                    "current_bet": p.current_bet
-                }
-                for p in self.table.players
-            ]
-        }
+        state["event"] = "table_state"
+
+        return state
 
     def showdown(self):
 

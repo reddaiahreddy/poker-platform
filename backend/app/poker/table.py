@@ -4,20 +4,32 @@ from app.poker.deck import Deck
 from app.poker.game_manager import GameManager
 
 class Table:
+    def move_dealer(self):
+        if not self.players:
+            return
+
+        self.dealer_position = (
+            self.dealer_position + 1
+        ) % len(self.players)
+
     def __init__(self):
-        # 🎮 Game state
-        self.players: List[Player] = []
+        self.players = []
+
         self.deck = Deck()
 
-        self.state = "WAITING"  # WAITING → PRE_FLOP → FLOP → TURN → RIVER → SHOWDOWN
+        self.state = "WAITING"
 
-        # 🧠 Betting system
         self.pot = 0
         self.current_bet = 0
         self.current_turn = 0
 
-        # 🃏 Community cards
         self.community_cards = []
+
+        # NEW
+        self.dealer_position = 0
+
+        self.small_blind = 10
+        self.big_blind = 20
 
     # -----------------------------
     # PLAYER MANAGEMENT
@@ -32,20 +44,64 @@ class Table:
     # GAME START
     # -----------------------------
     def start_round(self):
+
         self.deck = Deck()
         self.deck.shuffle()
 
         self.pot = 0
-        self.current_bet = 0
-        self.current_turn = 0
         self.community_cards = []
 
         self.state = "PRE_FLOP"
 
         for player in self.players:
             player.reset_hand()
+
+        # -----------------------------
+        # DEAL CARDS
+        # -----------------------------
+        for player in self.players:
             player.add_card(self.deck.deal(1)[0])
             player.add_card(self.deck.deal(1)[0])
+
+        # -----------------------------
+        # BLINDS
+        # -----------------------------
+        self.post_blinds()
+
+    def post_blinds(self):
+
+        if len(self.players) < 2:
+            return
+
+        sb_position = (
+            self.dealer_position + 1
+        ) % len(self.players)
+
+        bb_position = (
+            self.dealer_position + 2
+        ) % len(self.players)
+
+        small_blind_player = self.players[sb_position]
+        big_blind_player = self.players[bb_position]
+
+        # Small Blind
+        small_blind_player.chips -= self.small_blind
+        small_blind_player.current_bet = self.small_blind
+
+        # Big Blind
+        big_blind_player.chips -= self.big_blind
+        big_blind_player.current_bet = self.big_blind
+
+        self.pot = (
+            self.small_blind +
+            self.big_blind
+        )
+
+        self.current_bet = self.big_blind
+
+        self.current_turn = (
+            bb_position + 1
+        ) % len(self.players)
 
     # -----------------------------
     # TURN SYSTEM
@@ -54,6 +110,15 @@ class Table:
         if not self.players:
             return None
         return self.players[self.current_turn]
+    
+    def is_players_turn(self, player_id: str):
+
+        current_player = self.get_current_player()
+
+        if not current_player:
+            return False
+
+        return current_player.id == player_id
 
     def next_turn(self):
         if not self.players:
@@ -74,6 +139,11 @@ class Table:
     def bet(self, player_id: str, amount: int):
         player = next(p for p in self.players if p.id == player_id)
 
+        if not self.is_players_turn(player_id):
+            return {
+                "error": "Not your turn"
+            }
+
         if player.has_folded:
             return {"error": "Player has folded"}
 
@@ -82,6 +152,7 @@ class Table:
         self.pot += amount
 
         player.has_acted = True
+        self.next_turn()
         self.current_bet = max(self.current_bet, amount)
 
         return {
@@ -94,6 +165,11 @@ class Table:
     def call(self, player_id: str):
         player = next(p for p in self.players if p.id == player_id)
 
+        if not self.is_players_turn(player_id):
+            return {
+                "error": "Not your turn"
+            }
+
         if player.has_folded:
             return {"error": "Player has folded"}
 
@@ -104,6 +180,7 @@ class Table:
         self.pot += required
 
         player.has_acted = True
+        self.next_turn()
 
         return {
             "event": "call",
@@ -115,8 +192,14 @@ class Table:
     def fold(self, player_id: str):
         player = next(p for p in self.players if p.id == player_id)
 
+        if not self.is_players_turn(player_id):
+            return {
+                "error": "Not your turn"
+            }
+
         player.has_folded = True
         player.has_acted = True
+        self.next_turn()
 
         return {
             "event": "fold",
@@ -189,11 +272,29 @@ class Table:
     # DEBUG / STATE EXPORT
     # -----------------------------
     def get_state(self):
+        dealer = None
+
+        if self.players:
+            dealer = self.players[
+                self.dealer_position
+            ].name
+
         return {
             "state": self.state,
+            "current_player":
+                self.get_current_player().name
+                if self.get_current_player()
+                else None,
             "pot": self.pot,
             "current_bet": self.current_bet,
-            "community_cards": [str(c) for c in self.community_cards],
+            "dealer": dealer,
+            "dealer_position": self.dealer_position,
+            "small_blind": self.small_blind,
+            "big_blind": self.big_blind,
+            "community_cards": [
+                str(card)
+                for card in self.community_cards
+            ],
             "players": [
                 {
                     "name": p.name,
